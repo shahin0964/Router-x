@@ -81,7 +81,7 @@ fun CyberBottomBar(
                             onClick = { onNavigate(item.screen) }
                         )
                         .padding(horizontal = 12.dp, vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterVertically
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
                         imageVector = item.icon,

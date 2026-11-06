@@ -151,7 +151,7 @@ fun SplashScreen(
                             useCenter = false,
                             topLeft = Offset(center.x - 20.dp.toPx(), center.y - 20.dp.toPx()),
                             size = androidx.compose.ui.geometry.Size(40.dp.toPx(), 40.dp.toPx()),
-                            style = Stroke(width = 2.5f.toPx(), cap = StrokeCap.Round)
+                            style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
                         )
                     }
 

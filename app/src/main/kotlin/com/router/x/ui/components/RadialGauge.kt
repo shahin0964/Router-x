@@ -45,7 +45,7 @@ fun RadialGauge(
 
     Column(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterVertically
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier.size(size),
@@ -71,7 +71,7 @@ fun RadialGauge(
                 )
             }
 
-            Column(horizontalAlignment = Alignment.CenterVertically) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "$value$unit",
                     fontSize = 14.sp,
