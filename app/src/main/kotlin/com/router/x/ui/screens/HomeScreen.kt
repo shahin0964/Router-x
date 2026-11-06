@@ -1,12 +1,16 @@
 package com.router.x.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import com.router.x.R
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -141,13 +145,25 @@ fun HomeScreen(
                         )
                     }
 
-                    Text(
-                        text = "ROUTER X",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 2.sp,
-                        color = NeonCyan
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.app_logo_small),
+                            contentDescription = "ROUTER X Logo",
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                        )
+                        Text(
+                            text = "ROUTER X",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 2.sp,
+                            color = NeonCyan
+                        )
+                    }
 
                     Box {
                         IconButton(onClick = {}) {

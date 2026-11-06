@@ -9,6 +9,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +23,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import com.router.x.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Router
 import androidx.compose.material.icons.filled.Wifi
@@ -127,45 +131,21 @@ fun SplashScreen(
 
             // Logo & Header Section
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // Futuristic "X" with WiFi arcs
+                // Official ROUTER X Emblem
                 Box(
-                    modifier = Modifier.size(90.dp),
+                    modifier = Modifier
+                        .size(200.dp)
+                        .clip(RoundedCornerShape(38.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Canvas(modifier = Modifier.size(80.dp)) {
-                        // Concentric WiFi arcs
-                        val center = Offset(size.width / 2f, size.height * 0.25f)
-                        drawArc(
-                            color = NeonCyan.copy(alpha = 0.9f),
-                            startAngle = 205f,
-                            sweepAngle = 130f,
-                            useCenter = false,
-                            topLeft = Offset(center.x - 30.dp.toPx(), center.y - 30.dp.toPx()),
-                            size = androidx.compose.ui.geometry.Size(60.dp.toPx(), 60.dp.toPx()),
-                            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                        drawArc(
-                            color = ElectricBlue.copy(alpha = 0.8f),
-                            startAngle = 215f,
-                            sweepAngle = 110f,
-                            useCenter = false,
-                            topLeft = Offset(center.x - 20.dp.toPx(), center.y - 20.dp.toPx()),
-                            size = androidx.compose.ui.geometry.Size(40.dp.toPx(), 40.dp.toPx()),
-                            style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                    }
-
-                    // Cyber X text
-                    Text(
-                        text = "X",
-                        fontSize = 58.sp,
-                        fontWeight = FontWeight.Black,
-                        color = NeonCyan,
-                        modifier = Modifier.padding(top = 16.dp)
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = "ROUTER X Official Logo",
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
                     text = "ROUTER X",
@@ -175,7 +155,7 @@ fun SplashScreen(
                     color = TextPrimary
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = "One App. Complete Control.",
@@ -184,7 +164,7 @@ fun SplashScreen(
                     color = NeonCyan
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
                     text = "Universal Router Management\nLocal • Remote • Secure",
@@ -193,33 +173,6 @@ fun SplashScreen(
                     textAlign = TextAlign.Center,
                     color = TextSecondary,
                     lineHeight = 18.sp
-                )
-            }
-
-            // Central Cyber Router Hologram
-            Box(
-                modifier = Modifier
-                    .size(240.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                // Neon Ring
-                Canvas(modifier = Modifier.size(200.dp)) {
-                    drawOval(
-                        brush = Brush.radialGradient(
-                            colors = listOf(NeonCyan.copy(alpha = 0.5f), Color.Transparent)
-                        ),
-                        topLeft = Offset(0f, size.height * 0.45f),
-                        size = androidx.compose.ui.geometry.Size(size.width, size.height * 0.35f),
-                        style = Stroke(width = 2.dp.toPx())
-                    )
-                }
-
-                // Glowing router icon / representation
-                Icon(
-                    imageVector = Icons.Default.Router,
-                    contentDescription = null,
-                    tint = NeonCyan,
-                    modifier = Modifier.size(90.dp)
                 )
             }
 
