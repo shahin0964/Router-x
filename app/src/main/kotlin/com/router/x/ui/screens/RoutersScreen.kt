@@ -1,0 +1,419 @@
+package com.router.x.ui.screens
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Router
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.router.x.data.model.RouterItem
+import com.router.x.data.model.RouterProtocol
+import com.router.x.navigation.Screen
+import com.router.x.theme.CyberBackground
+import com.router.x.theme.CyberCardBorder
+import com.router.x.theme.CyberSurface
+import com.router.x.theme.CyberSurfaceVariant
+import com.router.x.theme.DeepNeonBlue
+import com.router.x.theme.ElectricBlue
+import com.router.x.theme.NeonCyan
+import com.router.x.theme.NeonGreen
+import com.router.x.theme.NeonGreenGlow
+import com.router.x.theme.TextMuted
+import com.router.x.theme.TextPrimary
+import com.router.x.theme.TextSecondary
+import com.router.x.ui.components.CyberBackground
+import com.router.x.ui.components.CyberBottomBar
+import com.router.x.ui.components.CyberOutlinedButton
+import com.router.x.ui.components.CyberPrimaryButton
+import com.router.x.ui.components.NeonCard
+import com.router.x.viewmodel.RouterViewModel
+
+@Composable
+fun RoutersScreen(
+    viewModel: RouterViewModel,
+    onNavigate: (Screen) -> Unit
+) {
+    val routers by viewModel.filteredRouters.collectAsState()
+    val selectedRouter by viewModel.selectedRouter.collectAsState()
+    val searchQuery by viewModel.routerSearchQuery.collectAsState()
+    val currentTab by viewModel.routerTabFilter.collectAsState()
+
+    var showAddDialog by remember { mutableStateOf(false) }
+
+    if (showAddDialog) {
+        AddRouterDialog(
+            onDismiss = { showAddDialog = false },
+            onAdd = { name, model, ip, protocol, isLocal ->
+                viewModel.addRouter(name, model, ip, protocol, isLocal)
+                showAddDialog = false
+            }
+        )
+    }
+
+    CyberBackground {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { onNavigate(Screen.Home) }) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = TextPrimary
+                        )
+                    }
+
+                    Text(
+                        text = "My Routers",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+
+                    IconButton(onClick = {}) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Options",
+                            tint = TextPrimary
+                        )
+                    }
+                }
+
+                // Search Bar
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.routerSearchQuery.value = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text("Search router...", color = TextMuted, fontSize = 14.sp)
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = TextMuted
+                        )
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = CyberSurface,
+                        unfocusedContainerColor = CyberSurface,
+                        focusedBorderColor = NeonCyan,
+                        unfocusedBorderColor = CyberCardBorder,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    ),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Filter Tabs (All, Local, Remote)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    listOf("All", "Local", "Remote").forEach { tab ->
+                        val isSelected = currentTab == tab
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (isSelected) DeepNeonBlue else CyberSurface,
+                            border = BorderStroke(
+                                1.dp,
+                                if (isSelected) NeonCyan else CyberCardBorder
+                            ),
+                            modifier = Modifier.clickable { viewModel.routerTabFilter.value = tab }
+                        ) {
+                            Text(
+                                text = tab,
+                                fontSize = 13.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) NeonCyan else TextSecondary,
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 7.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Routers List
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(routers) { router ->
+                        val isCurrent = router.id == selectedRouter.id
+                        RouterListItemCard(
+                            router = router,
+                            isSelected = isCurrent,
+                            onClick = {
+                                viewModel.selectRouter(router)
+                                onNavigate(Screen.ControlCenter)
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // + Add Router Button
+                CyberOutlinedButton(
+                    text = "+ Add Router",
+                    onClick = { showAddDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    borderColor = NeonCyan
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Bottom Navigation Bar
+            CyberBottomBar(
+                currentScreen = Screen.Routers,
+                onNavigate = onNavigate
+            )
+        }
+    }
+}
+
+@Composable
+fun RouterListItemCard(
+    router: RouterItem,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    NeonCard(
+        modifier = Modifier.fillMaxWidth(),
+        borderColor = if (isSelected) NeonCyan else CyberCardBorder,
+        borderWidth = if (isSelected) 1.5.dp else 1.dp,
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(46.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = CyberSurfaceVariant
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Router,
+                        contentDescription = null,
+                        tint = if (isSelected) NeonCyan else TextSecondary,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = router.name,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "${router.modelName} • ${router.ipAddress}",
+                    fontSize = 12.sp,
+                    color = TextMuted
+                )
+            }
+
+            // Badge
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = if (router.isLocal) NeonGreenGlow else Color(0x330077FF),
+                border = BorderStroke(1.dp, if (router.isLocal) NeonGreen else ElectricBlue)
+            ) {
+                Text(
+                    text = if (router.isLocal) "Connected" else "Online",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (router.isLocal) NeonGreen else ElectricBlue,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+            }
+
+            IconButton(onClick = {}) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = null,
+                    tint = TextMuted
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AddRouterDialog(
+    onDismiss: () -> Unit,
+    onAdd: (name: String, model: String, ip: String, protocol: RouterProtocol, isLocal: Boolean) -> Unit
+) {
+    var name by remember { mutableStateOf("New Router") }
+    var model by remember { mutableStateOf("Generic Router") }
+    var ip by remember { mutableStateOf("192.168.1.1") }
+    var selectedProtocol by remember { mutableStateOf(RouterProtocol.AUTO_DETECT) }
+    var isLocal by remember { mutableStateOf(true) }
+    var expandedProtocolDropdown by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = CyberSurface,
+        title = {
+            Text(
+                text = "Add Managed Router",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = NeonCyan
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Router Name", color = TextSecondary) },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = NeonCyan,
+                        unfocusedBorderColor = CyberCardBorder
+                    )
+                )
+
+                OutlinedTextField(
+                    value = ip,
+                    onValueChange = { ip = it },
+                    label = { Text("IP / Hostname", color = TextSecondary) },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = NeonCyan,
+                        unfocusedBorderColor = CyberCardBorder
+                    )
+                )
+
+                OutlinedTextField(
+                    value = model,
+                    onValueChange = { model = it },
+                    label = { Text("Router Model", color = TextSecondary) },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = NeonCyan,
+                        unfocusedBorderColor = CyberCardBorder
+                    )
+                )
+
+                // Protocol Selector
+                Box {
+                    OutlinedTextField(
+                        value = selectedProtocol.displayName,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Control Protocol", color = TextSecondary) },
+                        trailingIcon = {
+                            TextButton(onClick = { expandedProtocolDropdown = true }) {
+                                Text("Choose", color = NeonCyan)
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedBorderColor = NeonCyan,
+                            unfocusedBorderColor = CyberCardBorder
+                        )
+                    )
+
+                    DropdownMenu(
+                        expanded = expandedProtocolDropdown,
+                        onDismissRequest = { expandedProtocolDropdown = false },
+                        modifier = Modifier.background(CyberSurfaceVariant)
+                    ) {
+                        RouterProtocol.values().forEach { proto ->
+                            DropdownMenuItem(
+                                text = { Text(proto.displayName, color = TextPrimary) },
+                                onClick = {
+                                    selectedProtocol = proto
+                                    expandedProtocolDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onAdd(name, model, ip, selectedProtocol, isLocal) }
+            ) {
+                Text("Add Router", color = NeonCyan, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = TextSecondary)
+            }
+        }
+    )
+}
