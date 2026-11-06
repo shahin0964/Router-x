@@ -1,10 +1,11 @@
 package com.router.x.data.protocol
 
+import com.router.x.RouterXApp
 import com.router.x.data.model.DeviceItem
-import com.router.x.data.model.DeviceType
 import com.router.x.data.model.RouterItem
 import com.router.x.data.model.TelemetryData
 import com.router.x.data.model.WifiConfig
+import com.router.x.data.network.NetworkScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -17,11 +18,13 @@ import java.util.concurrent.TimeUnit
 class TPLinkDriver : RouterDriver {
 
     private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(8, TimeUnit.SECONDS)
+        .connectTimeout(4, TimeUnit.SECONDS)
+        .readTimeout(6, TimeUnit.SECONDS)
         .build()
 
     private var stkToken: String = ""
+    private val downloadHistory = ArrayDeque<Float>()
+    private val uploadHistory = ArrayDeque<Float>()
 
     override suspend fun testConnection(router: RouterItem): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
@@ -48,47 +51,54 @@ class TPLinkDriver : RouterDriver {
                     return@withContext Result.success(true)
                 }
             }
-            Result.success(true) // Fallback for simulation/preview
-        } catch (_: Exception) {
-            Result.success(true)
+            Result.success(res.code < 500)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
     override suspend fun fetchTelemetry(router: RouterItem): Result<TelemetryData> = withContext(Dispatchers.IO) {
+        val (dl, ul) = NetworkScanner.measureLiveTraffic()
+        val realPing = NetworkScanner.measurePing(router.ipAddress)
+        val wifiInfo = NetworkScanner.getWifiInfo(RouterXApp.instance)
+        val devices = NetworkScanner.scanLocalNetwork(RouterXApp.instance)
+
+        if (downloadHistory.size >= 10) downloadHistory.removeFirst()
+        if (uploadHistory.size >= 10) uploadHistory.removeFirst()
+        downloadHistory.addLast(dl)
+        uploadHistory.addLast(ul)
+
         Result.success(
             TelemetryData(
-                downloadSpeedMbps = 245f,
-                uploadSpeedMbps = 92f,
-                pingMs = 12,
-                healthPercent = 98,
-                healthStatus = "Excellent",
-                connectedDevicesCount = 24,
-                packetLossPercent = 0.2f,
+                downloadSpeedMbps = dl,
+                uploadSpeedMbps = ul,
+                pingMs = realPing,
+                healthPercent = wifiInfo.healthPercent,
+                healthStatus = if (wifiInfo.healthPercent >= 75) "Excellent" else "Good",
+                connectedDevicesCount = devices.size,
+                packetLossPercent = 0.0f,
                 jitterMs = 1,
-                cpuUsage = 12,
-                ramUsage = 38,
-                temperature = 40
+                cpuUsage = 15,
+                ramUsage = 35,
+                temperature = 39,
+                downloadHistory = downloadHistory.toList(),
+                uploadHistory = uploadHistory.toList()
             )
         )
     }
 
     override suspend fun fetchConnectedDevices(router: RouterItem): Result<List<DeviceItem>> = withContext(Dispatchers.IO) {
-        val list = listOf(
-            DeviceItem("1", "My Phone", "192.168.0.105", "48:2C:A0:11:22:33", "Samsung", DeviceType.PHONE, true),
-            DeviceItem("2", "Laptop-Home", "192.168.0.106", "3C:22:FB:44:55:66", "Dell", DeviceType.LAPTOP, true),
-            DeviceItem("3", "Smart TV", "192.168.0.110", "D0:03:DF:77:88:99", "Samsung", DeviceType.TV, true),
-            DeviceItem("4", "Desktop-PC", "192.168.0.112", "E4:54:E8:AA:BB:CC", "HP", DeviceType.DESKTOP, true),
-            DeviceItem("5", "Unknown Device", "192.168.0.120", "AA:BB:CC:DD:EE:FF", "-", DeviceType.UNKNOWN, true)
-        )
+        val list = NetworkScanner.scanLocalNetwork(RouterXApp.instance)
         Result.success(list)
     }
 
     override suspend fun fetchWifiConfig(router: RouterItem): Result<WifiConfig> = withContext(Dispatchers.IO) {
+        val wifi = NetworkScanner.getWifiInfo(RouterXApp.instance)
         Result.success(
             WifiConfig(
-                isEnabled = true,
-                ssid24G = "ROUTER_X_2G",
-                password = "••••••••",
+                isEnabled = wifi.isConnected,
+                ssid24G = wifi.ssid,
+                password = "",
                 channel = "Auto",
                 isBandSteeringEnabled = true,
                 transmitPowerPercent = 100
@@ -111,10 +121,10 @@ class TPLinkDriver : RouterDriver {
                 .post("{\"operation\":\"reboot\"}".toRequestBody("application/json".toMediaType()))
                 .build()
 
-            client.newCall(req).execute()
-            Result.success(true)
-        } catch (_: Exception) {
-            Result.success(true)
+            val res = client.newCall(req).execute()
+            Result.success(res.isSuccessful)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 

@@ -188,20 +188,36 @@ fun RoutersScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Routers List
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(routers) { router ->
-                        val isCurrent = router.id == selectedRouter.id
-                        RouterListItemCard(
-                            router = router,
-                            isSelected = isCurrent,
-                            onClick = {
-                                viewModel.selectRouter(router)
-                                onNavigate(Screen.ControlCenter)
-                            }
+                if (routers.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No Routers Configured.\nTap + Add Router or connect to Wi-Fi to auto-detect.",
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = TextMuted,
+                            fontSize = 13.sp
                         )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(routers) { router ->
+                            val isCurrent = router.id == selectedRouter.id
+                            RouterListItemCard(
+                                router = router,
+                                isSelected = isCurrent,
+                                onClick = {
+                                    viewModel.selectRouter(router)
+                                    onNavigate(Screen.ControlCenter)
+                                }
+                            )
+                        }
                     }
                 }
 

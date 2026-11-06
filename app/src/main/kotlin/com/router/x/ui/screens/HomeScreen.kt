@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Notifications
@@ -367,9 +368,9 @@ fun HomeScreen(
                         onClick = { onNavigate(Screen.ConnectedDevices) }
                     )
                     QuickActionButton(
-                        title = "More",
-                        icon = Icons.Default.MoreHoriz,
-                        onClick = { onNavigate(Screen.ControlCenter) }
+                        title = "Console",
+                        icon = Icons.Default.Language,
+                        onClick = { onNavigate(Screen.WebConsole) }
                     )
                 }
 

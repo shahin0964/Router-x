@@ -9,4 +9,5 @@ sealed class Screen(val route: String) {
     object ConnectedDevices : Screen("connected_devices")
     object NetworkMap : Screen("network_map")
     object AdvancedSettings : Screen("advanced_settings")
+    object WebConsole : Screen("web_console")
 }

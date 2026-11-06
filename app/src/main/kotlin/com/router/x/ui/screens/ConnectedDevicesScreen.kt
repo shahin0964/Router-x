@@ -203,19 +203,35 @@ fun ConnectedDevicesScreen(
             Spacer(modifier = Modifier.height(14.dp))
 
             // Devices List
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(devices) { device ->
-                    val isSelected = selectedDevice?.id == device.id
-                    DeviceCardItem(
-                        device = device,
-                        isSelected = isSelected,
-                        onClick = {
-                            selectedDevice = if (isSelected) null else device
-                        }
+            if (devices.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Scanning local network for devices...\nMake sure you are connected to Wi-Fi.",
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        color = TextMuted,
+                        fontSize = 13.sp
                     )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(devices) { device ->
+                        val isSelected = selectedDevice?.id == device.id
+                        DeviceCardItem(
+                            device = device,
+                            isSelected = isSelected,
+                            onClick = {
+                                selectedDevice = if (isSelected) null else device
+                            }
+                        )
+                    }
                 }
             }
 

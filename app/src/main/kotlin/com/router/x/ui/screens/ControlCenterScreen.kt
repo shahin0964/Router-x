@@ -88,12 +88,12 @@ fun ControlCenterScreen(
     val controlTiles = listOf(
         ControlTile("WiFi\nSettings", Icons.Default.Wifi) { onNavigate(Screen.AdvancedSettings) },
         ControlTile("LAN &\nDHCP", Icons.Default.Lan) { onNavigate(Screen.ConnectedDevices) },
-        ControlTile("Firewall &\nSecurity", Icons.Default.Security) { onNavigate(Screen.AdvancedSettings) },
+        ControlTile("Firewall &\nSecurity", Icons.Default.Security) { onNavigate(Screen.WebConsole) },
         ControlTile("Routing &\nVLAN", Icons.Default.AltRoute) { onNavigate(Screen.NetworkMap) },
-        ControlTile("VPN\nManagement", Icons.Default.Lock) {},
+        ControlTile("VPN\nManagement", Icons.Default.Lock) { onNavigate(Screen.WebConsole) },
         ControlTile("Bandwidth\nControl", Icons.Default.Speed) { onNavigate(Screen.Monitoring) },
-        ControlTile("Backup &\nRestore", Icons.Default.Backup) {},
-        ControlTile("Advanced\nSettings", Icons.Default.Settings) { onNavigate(Screen.AdvancedSettings) }
+        ControlTile("Backup &\nRestore", Icons.Default.Backup) { onNavigate(Screen.WebConsole) },
+        ControlTile("Advanced\nSettings", Icons.Default.Settings) { onNavigate(Screen.WebConsole) }
     )
 
     if (showRebootDialog) {

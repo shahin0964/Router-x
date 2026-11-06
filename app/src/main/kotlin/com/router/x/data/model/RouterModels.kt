@@ -10,8 +10,7 @@ enum class RouterProtocol(val displayName: String, val defaultPort: Int) {
     UNIFI_API("Ubiquiti UniFi OS", 443),
     UPNP_IGD("Universal Plug & Play (UPnP)", 1900),
     SNMP("SNMP v2c/v3", 161),
-    SSH_CLI("SSH Linux / DD-WRT Shell", 22),
-    SIMULATOR("Cyberpunk Live Simulator", 0)
+    SSH_CLI("SSH Linux / DD-WRT Shell", 22)
 }
 
 @Serializable
@@ -29,32 +28,32 @@ data class RouterItem(
     val name: String,
     val modelName: String,
     val ipAddress: String,
-    val firmwareVersion: String = "1.0.3 Build 2025",
-    val protocol: RouterProtocol = RouterProtocol.TPLINK_HTTP,
+    val firmwareVersion: String = "Live Network",
+    val protocol: RouterProtocol = RouterProtocol.AUTO_DETECT,
     val isOnline: Boolean = true,
     val isLocal: Boolean = true,
-    val uptime: String = "3d 12h 26m",
-    val cpuUsage: Int = 12,
-    val ramUsage: Int = 38,
-    val temperature: Int = 40,
+    val uptime: String = "Connected",
+    val cpuUsage: Int = 0,
+    val ramUsage: Int = 0,
+    val temperature: Int = 38,
     val credentials: RouterCredentials = RouterCredentials()
 )
 
 @Serializable
 data class TelemetryData(
-    val downloadSpeedMbps: Float = 245f,
-    val uploadSpeedMbps: Float = 92f,
-    val pingMs: Int = 12,
-    val healthPercent: Int = 98,
-    val healthStatus: String = "Excellent",
-    val connectedDevicesCount: Int = 24,
-    val packetLossPercent: Float = 0.2f,
+    val downloadSpeedMbps: Float = 0f,
+    val uploadSpeedMbps: Float = 0f,
+    val pingMs: Int = 0,
+    val healthPercent: Int = 100,
+    val healthStatus: String = "Scanning...",
+    val connectedDevicesCount: Int = 0,
+    val packetLossPercent: Float = 0.0f,
     val jitterMs: Int = 1,
-    val cpuUsage: Int = 12,
-    val ramUsage: Int = 38,
-    val temperature: Int = 40,
-    val downloadHistory: List<Float> = listOf(45f, 65f, 110f, 95f, 140f, 125f, 150f, 130f, 145f),
-    val uploadHistory: List<Float> = listOf(20f, 35f, 60f, 45f, 85f, 70f, 92f, 65f, 75f)
+    val cpuUsage: Int = 0,
+    val ramUsage: Int = 0,
+    val temperature: Int = 38,
+    val downloadHistory: List<Float> = emptyList(),
+    val uploadHistory: List<Float> = emptyList()
 )
 
 enum class DeviceType {

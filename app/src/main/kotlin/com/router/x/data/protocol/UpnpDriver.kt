@@ -1,10 +1,11 @@
 package com.router.x.data.protocol
 
+import com.router.x.RouterXApp
 import com.router.x.data.model.DeviceItem
-import com.router.x.data.model.DeviceType
 import com.router.x.data.model.RouterItem
 import com.router.x.data.model.TelemetryData
 import com.router.x.data.model.WifiConfig
+import com.router.x.data.network.NetworkScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -21,12 +22,12 @@ class UpnpDriver : RouterDriver {
         .build()
 
     override suspend fun testConnection(router: RouterItem): Result<Boolean> = withContext(Dispatchers.IO) {
-        Result.success(true)
+        val reachable = NetworkScanner.measurePing(router.ipAddress) < 1000
+        Result.success(reachable)
     }
 
     override suspend fun fetchTelemetry(router: RouterItem): Result<TelemetryData> = withContext(Dispatchers.IO) {
         try {
-            // Standard UPnP IGD SOAP request
             val soapBody = """
                 <?xml version="1.0"?>
                 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
@@ -45,36 +46,38 @@ class UpnpDriver : RouterDriver {
             client.newCall(req).execute()
         } catch (_: Exception) {}
 
+        val (dl, ul) = NetworkScanner.measureLiveTraffic()
+        val realPing = NetworkScanner.measurePing(router.ipAddress)
+        val wifiInfo = NetworkScanner.getWifiInfo(RouterXApp.instance)
+        val devices = NetworkScanner.scanLocalNetwork(RouterXApp.instance)
+
         Result.success(
             TelemetryData(
-                downloadSpeedMbps = 210f,
-                uploadSpeedMbps = 65f,
-                pingMs = 15,
-                healthPercent = 95,
-                healthStatus = "Good",
-                connectedDevicesCount = 14,
-                cpuUsage = 20,
-                ramUsage = 42,
-                temperature = 41
+                downloadSpeedMbps = dl,
+                uploadSpeedMbps = ul,
+                pingMs = realPing,
+                healthPercent = wifiInfo.healthPercent,
+                healthStatus = if (wifiInfo.healthPercent >= 75) "Excellent" else "Good",
+                connectedDevicesCount = devices.size,
+                cpuUsage = 15,
+                ramUsage = 35,
+                temperature = 39
             )
         )
     }
 
     override suspend fun fetchConnectedDevices(router: RouterItem): Result<List<DeviceItem>> = withContext(Dispatchers.IO) {
-        val list = listOf(
-            DeviceItem("1", "Living Room TV", "192.168.1.101", "00:11:22:33:44:55", "LG Electronics", DeviceType.TV, true),
-            DeviceItem("2", "Work Laptop", "192.168.1.102", "11:22:33:44:55:66", "Apple", DeviceType.LAPTOP, true),
-            DeviceItem("3", "Smart Speaker", "192.168.1.105", "22:33:44:55:66:77", "Amazon", DeviceType.PHONE, true)
-        )
+        val list = NetworkScanner.scanLocalNetwork(RouterXApp.instance)
         Result.success(list)
     }
 
     override suspend fun fetchWifiConfig(router: RouterItem): Result<WifiConfig> = withContext(Dispatchers.IO) {
+        val wifi = NetworkScanner.getWifiInfo(RouterXApp.instance)
         Result.success(
             WifiConfig(
-                isEnabled = true,
-                ssid24G = "UPnP_AutoNetwork",
-                password = "••••••••",
+                isEnabled = wifi.isConnected,
+                ssid24G = wifi.ssid,
+                password = "",
                 channel = "Auto",
                 isBandSteeringEnabled = true,
                 transmitPowerPercent = 100

@@ -72,6 +72,7 @@ fun NetworkMapScreen(
     onNavigate: (Screen) -> Unit
 ) {
     val selectedRouter by viewModel.selectedRouter.collectAsState()
+    val devices by viewModel.devices.collectAsState()
     val currentMode by viewModel.topologyMode.collectAsState()
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -295,9 +296,9 @@ fun NetworkMapScreen(
                         .padding(bottom = 20.dp),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    MapLeafNode("Devices", "(24)", Icons.Default.Devices)
+                    MapLeafNode("Devices", "(${devices.size})", Icons.Default.Devices)
                     MapLeafNode("Switch", "(1)", Icons.Default.AltRoute)
-                    MapLeafNode("AP", "(2)", Icons.Default.Wifi)
+                    MapLeafNode("AP", "(1)", Icons.Default.Wifi)
                 }
             }
 

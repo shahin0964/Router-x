@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -61,6 +62,7 @@ import com.router.x.theme.TextMuted
 import com.router.x.theme.TextPrimary
 import com.router.x.theme.TextSecondary
 import com.router.x.ui.components.CyberBackground
+import com.router.x.ui.components.CyberOutlinedButton
 import com.router.x.ui.components.CyberPrimaryButton
 import com.router.x.ui.components.NeonCard
 import com.router.x.viewmodel.RouterViewModel
@@ -362,6 +364,17 @@ fun AdvancedSettingsScreen(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Router Web Console Direct Access
+                CyberOutlinedButton(
+                    text = "Open Router Web Console",
+                    icon = Icons.Default.Language,
+                    onClick = { onNavigate(Screen.WebConsole) },
+                    modifier = Modifier.fillMaxWidth(),
+                    borderColor = NeonCyan
+                )
 
                 Spacer(modifier = Modifier.height(20.dp))
             }

@@ -1,10 +1,13 @@
 package com.router.x.data.protocol
 
+import com.router.x.RouterXApp
 import com.router.x.data.model.DeviceItem
 import com.router.x.data.model.DeviceType
 import com.router.x.data.model.RouterItem
 import com.router.x.data.model.TelemetryData
 import com.router.x.data.model.WifiConfig
+import com.router.x.data.network.NetworkScanner
+import com.router.x.data.network.VendorLookup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -17,8 +20,8 @@ import java.util.concurrent.TimeUnit
 
 class OpenWrtDriver(
     private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(4, TimeUnit.SECONDS)
+        .readTimeout(8, TimeUnit.SECONDS)
         .build()
 ) : RouterDriver {
 
@@ -91,21 +94,29 @@ class OpenWrtDriver(
     }
 
     override suspend fun fetchTelemetry(router: RouterItem): Result<TelemetryData> = withContext(Dispatchers.IO) {
-        val sysInfo = callUbus(router, "system", "info").getOrNull()
-        val memObj = sysInfo?.optJSONArray("result")?.optJSONObject(1)?.optJSONObject("memory")
-        val totalMem = memObj?.optLong("total", 100L) ?: 100L
-        val freeMem = memObj?.optLong("free", 50L) ?: 50L
-        val ramUsage = (((totalMem - freeMem).toDouble() / totalMem) * 100).toInt().coerceIn(0, 100)
+        val (dl, ul) = NetworkScanner.measureLiveTraffic()
+        val realPing = NetworkScanner.measurePing(router.ipAddress)
+        val wifiInfo = NetworkScanner.getWifiInfo(RouterXApp.instance)
+        val devices = NetworkScanner.scanLocalNetwork(RouterXApp.instance)
+
+        var ramUsage = 30
+        try {
+            val sysInfo = callUbus(router, "system", "info").getOrNull()
+            val memObj = sysInfo?.optJSONArray("result")?.optJSONObject(1)?.optJSONObject("memory")
+            val totalMem = memObj?.optLong("total", 100L) ?: 100L
+            val freeMem = memObj?.optLong("free", 70L) ?: 70L
+            ramUsage = (((totalMem - freeMem).toDouble() / totalMem) * 100).toInt().coerceIn(5, 95)
+        } catch (_: Exception) {}
 
         Result.success(
             TelemetryData(
-                downloadSpeedMbps = 180f,
-                uploadSpeedMbps = 45f,
-                pingMs = 9,
-                healthPercent = 99,
-                healthStatus = "Excellent",
-                connectedDevicesCount = 12,
-                cpuUsage = 8,
+                downloadSpeedMbps = dl,
+                uploadSpeedMbps = ul,
+                pingMs = realPing,
+                healthPercent = wifiInfo.healthPercent,
+                healthStatus = if (wifiInfo.healthPercent >= 80) "Excellent" else "Good",
+                connectedDevicesCount = devices.size,
+                cpuUsage = 10,
                 ramUsage = ramUsage,
                 temperature = 39
             )
@@ -114,42 +125,48 @@ class OpenWrtDriver(
 
     override suspend fun fetchConnectedDevices(router: RouterItem): Result<List<DeviceItem>> = withContext(Dispatchers.IO) {
         val devices = mutableListOf<DeviceItem>()
-        val arpRes = callUbus(router, "luci-rpc", "getHostHints").getOrNull()
-        val hosts = arpRes?.optJSONArray("result")?.optJSONObject(1)
-        if (hosts != null) {
-            val keys = hosts.keys()
-            while (keys.hasNext()) {
-                val mac = keys.next()
-                val info = hosts.optJSONObject(mac)
-                val name = info?.optString("name", "Host-$mac") ?: "Host-$mac"
-                val ipv4 = info?.optJSONArray("ipv4")?.optString(0, "192.168.1.x") ?: "192.168.1.x"
-                devices.add(
-                    DeviceItem(
-                        id = mac,
-                        name = name,
-                        ipAddress = ipv4,
-                        macAddress = mac,
-                        vendor = "OpenWrt Client",
-                        deviceType = DeviceType.PHONE,
-                        isOnline = true
-                    )
-                )
+        try {
+            val arpRes = callUbus(router, "luci-rpc", "getHostHints").getOrNull()
+            val hosts = arpRes?.optJSONArray("result")?.optJSONObject(1)
+            if (hosts != null) {
+                val keys = hosts.keys()
+                while (keys.hasNext()) {
+                    val mac = keys.next()
+                    val info = hosts.optJSONObject(mac)
+                    val name = info?.optString("name", "") ?: ""
+                    val ipv4 = info?.optJSONArray("ipv4")?.optString(0, "") ?: ""
+                    val (vendor, devType) = VendorLookup.resolveVendor(mac)
+                    if (ipv4.isNotEmpty()) {
+                        devices.add(
+                            DeviceItem(
+                                id = mac,
+                                name = if (name.isNotEmpty()) name else "$vendor Device",
+                                ipAddress = ipv4,
+                                macAddress = mac,
+                                vendor = vendor,
+                                deviceType = devType,
+                                isOnline = true
+                            )
+                        )
+                    }
+                }
             }
-        }
+        } catch (_: Exception) {}
+
         if (devices.isEmpty()) {
-            devices.add(DeviceItem("1", "Guest Mobile", "192.168.10.15", "C0:EE:FB:01:22:33", "OnePlus", DeviceType.PHONE, true))
-            devices.add(DeviceItem("2", "Office Workstation", "192.168.10.22", "D4:5D:64:12:34:56", "Dell", DeviceType.DESKTOP, true))
+            return@withContext Result.success(NetworkScanner.scanLocalNetwork(RouterXApp.instance))
         }
         Result.success(devices)
     }
 
     override suspend fun fetchWifiConfig(router: RouterItem): Result<WifiConfig> = withContext(Dispatchers.IO) {
+        val wifi = NetworkScanner.getWifiInfo(RouterXApp.instance)
         Result.success(
             WifiConfig(
-                isEnabled = true,
-                ssid24G = "OpenWrt_Secure",
-                password = "••••••••",
-                channel = "11",
+                isEnabled = wifi.isConnected,
+                ssid24G = wifi.ssid,
+                password = "",
+                channel = "Auto",
                 isBandSteeringEnabled = true,
                 transmitPowerPercent = 100
             )
