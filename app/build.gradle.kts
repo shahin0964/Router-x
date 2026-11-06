@@ -9,12 +9,15 @@ android {
     namespace = "com.router.x"
     compileSdk = 35
 
+    val appVersionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
+    val appVersionName = (project.findProperty("versionName") as? String) ?: "1.0.0"
+
     defaultConfig {
         applicationId = "com.router.x"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
