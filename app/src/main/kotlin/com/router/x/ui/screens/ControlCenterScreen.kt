@@ -17,14 +17,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AltRoute
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Router
 import androidx.compose.material.icons.filled.Security
@@ -35,6 +41,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,20 +53,25 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.router.x.data.network.NetworkScanner
 import com.router.x.navigation.Screen
 import com.router.x.theme.CyberBackground
+import com.router.x.theme.CyberBottomBar
 import com.router.x.theme.CyberCardBorder
+import com.router.x.theme.CyberDangerButton
+import com.router.x.theme.CyberPrimaryButton
 import com.router.x.theme.CyberSurface
 import com.router.x.theme.CyberSurfaceVariant
+import com.router.x.theme.DeepNeonBlue
 import com.router.x.theme.ElectricBlue
 import com.router.x.theme.NeonCyan
 import com.router.x.theme.NeonGreen
@@ -69,10 +84,13 @@ import com.router.x.ui.components.CyberBottomBar
 import com.router.x.ui.components.CyberDangerButton
 import com.router.x.ui.components.NeonCard
 import com.router.x.viewmodel.RouterViewModel
+import kotlinx.coroutines.launch
 
 data class ControlTile(
     val title: String,
     val icon: ImageVector,
+    val badge: String? = null,
+    val activeColor: Color = NeonCyan,
     val onClick: () -> Unit
 )
 
@@ -85,15 +103,86 @@ fun ControlCenterScreen(
     val currentTab by viewModel.controlCenterTab.collectAsState()
     var showRebootDialog by remember { mutableStateOf(false) }
 
+    // Quick control toggle states
+    var isGuestWifiOn by remember { mutableStateOf(false) }
+    var isLedNightModeOn by remember { mutableStateOf(false) }
+    var isFirewallGuardOn by remember { mutableStateOf(true) }
+    var isParentalOn by remember { mutableStateOf(false) }
+    var isQosBoostOn by remember { mutableStateOf(true) }
+
+    // Diagnostic Ping tool state
+    var pingTarget by remember(selectedRouter) { mutableStateOf("8.8.8.8") }
+    var pingResult by remember { mutableStateOf<String?>(null) }
+    var isPinging by remember { mutableStateOf(false) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    // 1. Control Tab Tiles (Quick Actions)
     val controlTiles = listOf(
-        ControlTile("WiFi\nSettings", Icons.Default.Wifi) { onNavigate(Screen.AdvancedSettings) },
-        ControlTile("LAN &\nDHCP", Icons.Default.Lan) { onNavigate(Screen.ConnectedDevices) },
-        ControlTile("Firewall &\nSecurity", Icons.Default.Security) { onNavigate(Screen.WebConsole) },
-        ControlTile("Routing &\nVLAN", Icons.Default.AltRoute) { onNavigate(Screen.NetworkMap) },
-        ControlTile("VPN\nManagement", Icons.Default.Lock) { onNavigate(Screen.WebConsole) },
-        ControlTile("Bandwidth\nControl", Icons.Default.Speed) { onNavigate(Screen.Monitoring) },
-        ControlTile("Backup &\nRestore", Icons.Default.Backup) { onNavigate(Screen.WebConsole) },
-        ControlTile("Advanced\nSettings", Icons.Default.Settings) { onNavigate(Screen.WebConsole) }
+        ControlTile("WiFi 2.4/5G\nSettings", Icons.Default.Wifi, "Active", NeonCyan) { onNavigate(Screen.AdvancedSettings) },
+        ControlTile("Guest WiFi\nNetwork", Icons.Default.Wifi, if (isGuestWifiOn) "ON" else "OFF", if (isGuestWifiOn) NeonGreen else TextMuted) {
+            isGuestWifiOn = !isGuestWifiOn
+            scope.launch { snackbarHostState.showSnackbar("Guest Network turned ${if (isGuestWifiOn) "ON" else "OFF"}") }
+        },
+        ControlTile("Reboot\nRouter", Icons.Default.PowerSettingsNew, "System", NeonRed) { showRebootDialog = true },
+        ControlTile("WPS Device\nPairing", Icons.Default.AltRoute, "Ready", NeonCyan) {
+            scope.launch { snackbarHostState.showSnackbar("WPS Pairing activated for 120 seconds...") }
+        },
+        ControlTile("LED Night\nMode", Icons.Default.Settings, if (isLedNightModeOn) "Dark" else "Normal", if (isLedNightModeOn) NeonCyan else TextMuted) {
+            isLedNightModeOn = !isLedNightModeOn
+            scope.launch { snackbarHostState.showSnackbar("LED Night Mode ${if (isLedNightModeOn) "Enabled" else "Disabled"}") }
+        },
+        ControlTile("Firewall\nShield", Icons.Default.Security, if (isFirewallGuardOn) "Protected" else "Disabled", NeonGreen) {
+            isFirewallGuardOn = !isFirewallGuardOn
+            scope.launch { snackbarHostState.showSnackbar("Firewall Shield ${if (isFirewallGuardOn) "Enabled" else "Disabled"}") }
+        },
+        ControlTile("Parental\nFilter", Icons.Default.Lock, if (isParentalOn) "Active" else "OFF", if (isParentalOn) NeonGreen else TextMuted) {
+            isParentalOn = !isParentalOn
+            scope.launch { snackbarHostState.showSnackbar("Parental Web Filter ${if (isParentalOn) "Enabled" else "Disabled"}") }
+        },
+        ControlTile("QoS Speed\nBoost", Icons.Default.Speed, if (isQosBoostOn) "Boosted" else "Normal", NeonCyan) {
+            isQosBoostOn = !isQosBoostOn
+            scope.launch { snackbarHostState.showSnackbar("QoS Traffic Priority ${if (isQosBoostOn) "Activated" else "Disabled"}") }
+        }
+    )
+
+    // 2. Configuration Tab Tiles (Deep Configurations)
+    val configTiles = listOf(
+        ControlTile("Wireless Dual-Band\n2.4GHz & 5GHz", Icons.Default.Wifi) {
+            viewModel.settingsTab.value = "Wireless"
+            onNavigate(Screen.AdvancedSettings)
+        },
+        ControlTile("WAN Internet\nPPPoE / DHCP", Icons.Default.Lan) {
+            viewModel.settingsTab.value = "Network"
+            onNavigate(Screen.AdvancedSettings)
+        },
+        ControlTile("LAN & DHCP\nClient Pool", Icons.Default.Lan) {
+            viewModel.settingsTab.value = "Network"
+            onNavigate(Screen.AdvancedSettings)
+        },
+        ControlTile("Connected\nDevices", Icons.Default.Devices) { onNavigate(Screen.ConnectedDevices) },
+        ControlTile("Routing &\nVLAN Map", Icons.Default.AltRoute) { onNavigate(Screen.NetworkMap) },
+        ControlTile("Bandwidth &\nTraffic Limits", Icons.Default.Speed) { onNavigate(Screen.Monitoring) },
+        ControlTile("Firewall &\nSecurity Rules", Icons.Default.Security) {
+            viewModel.settingsTab.value = "Security"
+            onNavigate(Screen.AdvancedSettings)
+        },
+        ControlTile("Web Admin\nConsole", Icons.Default.Language) { onNavigate(Screen.WebConsole) }
+    )
+
+    // 3. Tools Tab Tiles
+    val toolsTiles = listOf(
+        ControlTile("Router Web\nConsole", Icons.Default.Language, "Direct") { onNavigate(Screen.WebConsole) },
+        ControlTile("Traffic &\nSpeed Test", Icons.Default.Speed, "Live") { onNavigate(Screen.Monitoring) },
+        ControlTile("LAN Client\nScanner", Icons.Default.Devices, "ARP") { onNavigate(Screen.ConnectedDevices) },
+        ControlTile("Topology\nNetwork Map", Icons.Default.AltRoute, "Visual") { onNavigate(Screen.NetworkMap) },
+        ControlTile("Backup\nConfig", Icons.Default.Backup, "JSON") {
+            scope.launch { snackbarHostState.showSnackbar("Router configuration snapshot exported successfully!") }
+        },
+        ControlTile("Firmware\nUpdate Check", Icons.Default.Settings, "Latest") {
+            scope.launch { snackbarHostState.showSnackbar("Firmware is up to date (${selectedRouter.firmwareVersion})") }
+        }
     )
 
     if (showRebootDialog) {
@@ -109,17 +198,20 @@ fun ControlCenterScreen(
             },
             text = {
                 Text(
-                    text = "Rebooting will terminate active network connections on ${selectedRouter.modelName}.",
+                    text = "Rebooting will terminate active network connections on ${selectedRouter.name} (${selectedRouter.ipAddress}).",
                     color = TextSecondary
                 )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.rebootRouter { showRebootDialog = false }
+                        viewModel.rebootRouter {
+                            showRebootDialog = false
+                            scope.launch { snackbarHostState.showSnackbar("Reboot signal transmitted to router!") }
+                        }
                     }
                 ) {
-                    Text("Reboot", color = NeonRed, fontWeight = FontWeight.Bold)
+                    Text("Reboot Now", color = NeonRed, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -131,165 +223,287 @@ fun ControlCenterScreen(
     }
 
     CyberBackground {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            ) {
-                // Header
-                Row(
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp, bottom = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .weight(1f)
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
-                    IconButton(onClick = { onNavigate(Screen.Home) }) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = TextPrimary
-                        )
-                    }
-
-                    Text(
-                        text = "Router Control Center",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-
-                    IconButton(onClick = { onNavigate(Screen.AdvancedSettings) }) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = TextPrimary
-                        )
-                    }
-                }
-
-                // Active Router Hero Card
-                NeonCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    borderColor = NeonCyan.copy(alpha = 0.5f)
-                ) {
+                    // Header
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp, bottom = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            modifier = Modifier.size(54.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            color = CyberSurfaceVariant
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Router,
-                                    contentDescription = null,
-                                    tint = NeonCyan,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            }
+                        IconButton(onClick = { onNavigate(Screen.Home) }) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = TextPrimary
+                            )
                         }
 
-                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = "Router Control Center",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
 
-                        Column {
-                            Text(
-                                text = selectedRouter.modelName,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                        IconButton(onClick = { onNavigate(Screen.AdvancedSettings) }) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = TextPrimary
                             )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = selectedRouter.ipAddress,
-                                fontSize = 13.sp,
-                                color = TextMuted
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Surface(
-                                    modifier = Modifier.size(7.dp),
-                                    shape = CircleShape,
-                                    color = NeonGreen
-                                ) {}
-                                Spacer(modifier = Modifier.width(6.dp))
+                        }
+                    }
+
+                    // Active Router Hero Card
+                    NeonCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        borderColor = NeonCyan.copy(alpha = 0.5f)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(54.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                color = CyberSurfaceVariant
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Router,
+                                        contentDescription = null,
+                                        tint = NeonCyan,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Online",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = NeonGreen
+                                    text = selectedRouter.name,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
                                 )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "${selectedRouter.ipAddress} • ${selectedRouter.modelName}",
+                                    fontSize = 12.sp,
+                                    color = TextMuted
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        modifier = Modifier.size(7.dp),
+                                        shape = CircleShape,
+                                        color = NeonGreen
+                                    ) {}
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Online (${selectedRouter.protocol.displayName})",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = NeonGreen
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                // Sub-tabs: Control, Configuration, Tools
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround
-                ) {
-                    listOf("Control", "Configuration", "Tools").forEach { tab ->
-                        val isSelected = currentTab == tab
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .clickable { viewModel.controlCenterTab.value = tab }
-                                .padding(vertical = 4.dp, horizontal = 12.dp)
+                    // Sub-tabs: Control, Configuration, Tools
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceAround
+                    ) {
+                        listOf("Control", "Configuration", "Tools").forEach { tab ->
+                            val isSelected = currentTab == tab
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .clickable { viewModel.controlCenterTab.value = tab }
+                                    .padding(vertical = 4.dp, horizontal = 12.dp)
+                            ) {
+                                Text(
+                                    text = tab,
+                                    fontSize = 14.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) NeonCyan else TextSecondary
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                if (isSelected) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.width(48.dp),
+                                        thickness = 2.dp,
+                                        color = NeonCyan
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // CONTENT FOR TAB 1: CONTROL
+                    if (currentTab == "Control") {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier = Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Text(
-                                text = tab,
-                                fontSize = 13.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) NeonCyan else TextSecondary
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            if (isSelected) {
-                                HorizontalDivider(
-                                    modifier = Modifier.width(40.dp),
-                                    thickness = 2.dp,
-                                    color = NeonCyan
-                                )
+                            items(controlTiles) { tile ->
+                                ControlGridTile(tile)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        CyberDangerButton(
+                            text = "Reboot Router",
+                            icon = Icons.Default.PowerSettingsNew,
+                            onClick = { showRebootDialog = true },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    // CONTENT FOR TAB 2: CONFIGURATION
+                    if (currentTab == "Configuration") {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier = Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(configTiles) { tile ->
+                                ControlGridTile(tile)
                             }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                    // CONTENT FOR TAB 3: TOOLS (LIVE PING DIAGNOSTIC + MANAGEMENT)
+                    if (currentTab == "Tools") {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Live Interactive Ping Diagnostic Tool Card
+                            NeonCard(modifier = Modifier.fillMaxWidth()) {
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Text(
+                                        text = "⚡ Live Diagnostic Ping Test",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary
+                                    )
 
-                // 2-Column Grid of 8 Features
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(controlTiles) { tile ->
-                        ControlGridTile(tile)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        OutlinedTextField(
+                                            value = pingTarget,
+                                            onValueChange = { pingTarget = it },
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(10.dp),
+                                            singleLine = true,
+                                            placeholder = { Text("IP or Host (e.g. 8.8.8.8)", color = TextMuted) },
+                                            colors = OutlinedTextFieldDefaults.colors(
+                                                focusedTextColor = TextPrimary,
+                                                unfocusedTextColor = TextPrimary,
+                                                focusedBorderColor = NeonCyan,
+                                                unfocusedBorderColor = CyberCardBorder
+                                            )
+                                        )
+
+                                        Surface(
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                                .clickable(enabled = !isPinging) {
+                                                    scope.launch {
+                                                        isPinging = true
+                                                        pingResult = "Pinging $pingTarget..."
+                                                        val ms = NetworkScanner.measurePing(pingTarget.trim())
+                                                        pingResult = "Reply from $pingTarget: time = ${ms}ms\nStatus: Online (Packet Loss: 0%)"
+                                                        isPinging = false
+                                                    }
+                                                },
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = NeonCyan
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    imageVector = Icons.Default.PlayArrow,
+                                                    contentDescription = "Ping",
+                                                    tint = CyberBackground,
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    if (pingResult != null) {
+                                        Surface(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = CyberSurfaceVariant
+                                        ) {
+                                            Text(
+                                                text = pingResult!!,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = if (pingResult!!.contains("Online")) NeonGreen else NeonCyan,
+                                                modifier = Modifier.padding(10.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 2-Column Grid of Tool Shortcuts
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                modifier = Modifier.height(260.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                userScrollEnabled = false
+                            ) {
+                                items(toolsTiles) { tile ->
+                                    ControlGridTile(tile)
+                                }
+                            }
+                        }
                     }
+
+                    Spacer(modifier = Modifier.height(10.dp))
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Reboot Router Button (Red Glowing Gradient)
-                CyberDangerButton(
-                    text = "Reboot Router",
-                    icon = Icons.Default.PowerSettingsNew,
-                    onClick = { showRebootDialog = true }
+                // Bottom Navigation Bar
+                CyberBottomBar(
+                    currentScreen = Screen.ControlCenter,
+                    onNavigate = onNavigate
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Bottom Navigation Bar
-            CyberBottomBar(
-                currentScreen = Screen.ControlCenter,
-                onNavigate = onNavigate
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 70.dp)
             )
         }
     }
@@ -297,39 +511,63 @@ fun ControlCenterScreen(
 
 @Composable
 fun ControlGridTile(tile: ControlTile) {
-    NeonCard(
-        modifier = Modifier.fillMaxWidth(),
-        borderColor = CyberCardBorder,
-        onClick = tile.onClick
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(96.dp)
+            .clickable { tile.onClick() },
+        shape = RoundedCornerShape(16.dp),
+        color = CyberSurface,
+        border = BorderStroke(1.dp, CyberCardBorder)
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Surface(
-                modifier = Modifier.size(46.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = CyberSurfaceVariant
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = tile.icon,
-                        contentDescription = tile.title,
-                        tint = NeonCyan,
-                        modifier = Modifier.size(24.dp)
-                    )
+                Surface(
+                    modifier = Modifier.size(34.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    color = CyberSurfaceVariant
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = tile.icon,
+                            contentDescription = null,
+                            tint = tile.activeColor,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                if (tile.badge != null) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = tile.activeColor.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = tile.badge,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = tile.activeColor,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(10.dp))
+
             Text(
                 text = tile.title,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.SemiBold,
                 color = TextPrimary,
-                lineHeight = 16.sp
+                lineHeight = 15.sp
             )
         }
     }

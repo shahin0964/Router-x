@@ -41,6 +41,13 @@ fun WaveformChart(
     maxVal: Float = 160f,
     showLegend: Boolean = true
 ) {
+    val peak = maxOf(
+        (downloadPoints.maxOrNull() ?: 10f),
+        (uploadPoints.maxOrNull() ?: 10f),
+        8f
+    )
+    val effectiveMax = maxOf(if (maxVal != 160f) maxVal else (peak * 1.25f), 10f)
+
     Column(modifier = modifier.fillMaxWidth()) {
         if (showLegend) {
             Row(
@@ -90,9 +97,9 @@ fun WaveformChart(
                     .padding(end = 4.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = "150", fontSize = 9.sp, color = TextMuted)
-                Text(text = "100", fontSize = 9.sp, color = TextMuted)
-                Text(text = "50", fontSize = 9.sp, color = TextMuted)
+                Text(text = "${effectiveMax.toInt()}", fontSize = 9.sp, color = TextMuted)
+                Text(text = "${(effectiveMax * 0.66f).toInt()}", fontSize = 9.sp, color = TextMuted)
+                Text(text = "${(effectiveMax * 0.33f).toInt()}", fontSize = 9.sp, color = TextMuted)
                 Text(text = "0", fontSize = 9.sp, color = TextMuted)
             }
 
@@ -117,22 +124,22 @@ fun WaveformChart(
                     )
                 }
 
-                fun drawWave(data: List<Float>, strokeColor: Color, glowColor: Color) {
-                    if (data.size < 2) return
+                fun drawWave(rawData: List<Float>, strokeColor: Color, glowColor: Color) {
+                    val data = if (rawData.size >= 2) rawData else listOf(1f, 2f, 1f)
                     val step = w / (data.size - 1)
                     val path = Path()
                     val fillPath = Path()
 
-                    val startY = h - (data[0] / maxVal).coerceIn(0f, 1f) * h
+                    val startY = h - (data[0] / effectiveMax).coerceIn(0f, 1f) * h
                     path.moveTo(0f, startY)
                     fillPath.moveTo(0f, h)
                     fillPath.lineTo(0f, startY)
 
                     for (i in 0 until data.size - 1) {
                         val x1 = i * step
-                        val y1 = h - (data[i] / maxVal).coerceIn(0f, 1f) * h
+                        val y1 = h - (data[i] / effectiveMax).coerceIn(0f, 1f) * h
                         val x2 = (i + 1) * step
-                        val y2 = h - (data[i + 1] / maxVal).coerceIn(0f, 1f) * h
+                        val y2 = h - (data[i + 1] / effectiveMax).coerceIn(0f, 1f) * h
 
                         val cx = (x1 + x2) / 2f
                         path.cubicTo(cx, y1, cx, y2, x2, y2)

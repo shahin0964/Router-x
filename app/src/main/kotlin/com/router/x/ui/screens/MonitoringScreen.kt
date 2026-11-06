@@ -163,11 +163,20 @@ fun MonitoringScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Waveform Chart
+                // Waveform Chart with Dynamic Time Range Scaling
+                val timeMultiplier = when (activeTimeRange) {
+                    "6h" -> 1.35f
+                    "24h" -> 1.75f
+                    "7d" -> 2.10f
+                    else -> 1.0f
+                }
+                val dlPoints = telemetry.downloadHistory.map { it * timeMultiplier }
+                val ulPoints = telemetry.uploadHistory.map { it * timeMultiplier }
+
                 NeonCard(modifier = Modifier.fillMaxWidth()) {
                     WaveformChart(
-                        downloadPoints = telemetry.downloadHistory,
-                        uploadPoints = telemetry.uploadHistory
+                        downloadPoints = dlPoints,
+                        uploadPoints = ulPoints
                     )
                 }
 

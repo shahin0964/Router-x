@@ -36,43 +36,70 @@ object RouterProber {
                 val serverHeader = resp.header("Server") ?: ""
                 val body = resp.body?.string() ?: ""
 
-                if (body.contains("TP-Link", ignoreCase = true) || serverHeader.contains("TP-Link", ignoreCase = true) || body.contains("Archer", ignoreCase = true)) {
-                    val model = if (body.contains("Archer", ignoreCase = true)) "TP-Link Archer Series" else "TP-Link Router"
+                // BDCOM GPON/EPON Detection
+                if (body.contains("BDCOM", ignoreCase = true) || serverHeader.contains("BDCOM", ignoreCase = true) ||
+                    body.contains("GP1704", ignoreCase = true) || body.contains("P1501", ignoreCase = true) ||
+                    (body.contains("EPON", ignoreCase = true) && body.contains("ONU", ignoreCase = true))) {
+                    return@withContext "BDCOM GPON/EPON Router" to RouterProtocol.BDCOM_GPON
+                }
+
+                // TP-Link
+                if (body.contains("TP-Link", ignoreCase = true) || serverHeader.contains("TP-Link", ignoreCase = true) || body.contains("Archer", ignoreCase = true) || body.contains("WR84", ignoreCase = true) || body.contains("WR94", ignoreCase = true)) {
+                    val model = if (body.contains("Archer", ignoreCase = true)) "TP-Link Archer Series" else "TP-Link Wireless Router"
                     return@withContext model to RouterProtocol.TPLINK_HTTP
                 }
 
+                // Tenda
+                if (body.contains("Tenda", ignoreCase = true) || serverHeader.contains("Tenda", ignoreCase = true) || body.contains("tendawifi", ignoreCase = true) || body.contains("Nova", ignoreCase = true)) {
+                    return@withContext "Tenda Wireless Router" to RouterProtocol.TENDA_HTTP
+                }
+
+                // ASUS
+                if (body.contains("ASUS", ignoreCase = true) || body.contains("ASUSWRT", ignoreCase = true) || body.contains("RT-", ignoreCase = true) || body.contains("TUF-", ignoreCase = true)) {
+                    return@withContext "ASUS RT / TUF Router" to RouterProtocol.ASUS_WRT
+                }
+
+                // Netgear
+                if (body.contains("Netgear", ignoreCase = true) || body.contains("Nighthawk", ignoreCase = true) || body.contains("Orbi", ignoreCase = true) || body.contains("routerlogin", ignoreCase = true)) {
+                    return@withContext "Netgear Nighthawk Router" to RouterProtocol.NETGEAR_GENIE
+                }
+
+                // D-Link
+                if (body.contains("D-Link", ignoreCase = true) || body.contains("DIR-", ignoreCase = true) || body.contains("dlink", ignoreCase = true)) {
+                    return@withContext "D-Link Wireless Router" to RouterProtocol.DLINK_HNAP
+                }
+
+                // Huawei & ZTE Optical ONUs
+                if (body.contains("Huawei", ignoreCase = true) || body.contains("EchoLife", ignoreCase = true) || body.contains("HG8145", ignoreCase = true) || body.contains("HG8245", ignoreCase = true) || body.contains("ZTE", ignoreCase = true) || body.contains("ZXHN", ignoreCase = true)) {
+                    return@withContext "Huawei / ZTE Optical Gateway" to RouterProtocol.HUAWEI_ZTE
+                }
+
+                // OpenWrt / LuCI
                 if (body.contains("OpenWrt", ignoreCase = true) || body.contains("LuCI", ignoreCase = true)) {
                     return@withContext "OpenWrt / LuCI Router" to RouterProtocol.OPENWRT_UBUS
                 }
 
+                // MikroTik
                 if (body.contains("MikroTik", ignoreCase = true) || body.contains("RouterOS", ignoreCase = true)) {
-                    return@withContext "MikroTik Router" to RouterProtocol.MIKROTIK_REST
+                    return@withContext "MikroTik RouterOS" to RouterProtocol.MIKROTIK_REST
                 }
 
+                // UniFi
                 if (body.contains("UniFi", ignoreCase = true) || body.contains("Ubiquiti", ignoreCase = true)) {
                     return@withContext "UniFi Gateway" to RouterProtocol.UNIFI_API
                 }
 
-                if (body.contains("ASUS", ignoreCase = true) || body.contains("RT-", ignoreCase = true)) {
-                    return@withContext "ASUS Wireless Router" to RouterProtocol.TPLINK_HTTP
+                // Extract HTML title if available
+                val titleMatch = "<title>(.*?)</title>".toRegex(RegexOption.IGNORE_CASE).find(body)
+                val pageTitle = titleMatch?.groupValues?.getOrNull(1)?.trim()
+                if (!pageTitle.isNullOrEmpty() && pageTitle.length in 3..40 && !pageTitle.contains("404") && !pageTitle.contains("Error")) {
+                    return@withContext pageTitle to RouterProtocol.AUTO_DETECT
                 }
 
-                if (body.contains("Netgear", ignoreCase = true)) {
-                    return@withContext "Netgear Router" to RouterProtocol.TPLINK_HTTP
-                }
-
-                if (body.contains("Tenda", ignoreCase = true)) {
-                    return@withContext "Tenda Wireless Router" to RouterProtocol.TPLINK_HTTP
-                }
-
-                if (body.contains("D-Link", ignoreCase = true)) {
-                    return@withContext "D-Link Router" to RouterProtocol.TPLINK_HTTP
-                }
-
-                return@withContext "Gateway Web Router" to RouterProtocol.UPNP_IGD
+                return@withContext "Universal Wi-Fi Router" to RouterProtocol.AUTO_DETECT
             } catch (_: Exception) {}
         }
 
-        return@withContext "Network Gateway Router" to RouterProtocol.UPNP_IGD
+        return@withContext "Universal Wi-Fi Router" to RouterProtocol.AUTO_DETECT
     }
 }

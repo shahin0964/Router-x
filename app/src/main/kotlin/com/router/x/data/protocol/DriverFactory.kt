@@ -18,6 +18,12 @@ object DriverFactory {
             RouterProtocol.OPENWRT_UBUS -> openWrtDriver
             RouterProtocol.UNIFI_API -> uniFiDriver
             RouterProtocol.UPNP_IGD -> upnpDriver
+            RouterProtocol.TENDA_HTTP,
+            RouterProtocol.ASUS_WRT,
+            RouterProtocol.BDCOM_GPON,
+            RouterProtocol.NETGEAR_GENIE,
+            RouterProtocol.DLINK_HNAP,
+            RouterProtocol.HUAWEI_ZTE,
             RouterProtocol.AUTO_DETECT,
             RouterProtocol.SNMP,
             RouterProtocol.SSH_CLI -> realUniversalDriver

@@ -120,6 +120,53 @@ fun RouterWebConsoleScreen(
                 )
             }
 
+            // Quick Brand Credential Helper Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf("admin / admin", "admin / password", "telecomadmin", "user / user").forEach { cred ->
+                    val clean = cred.replace(" ", "")
+                    Surface(
+                        modifier = Modifier
+                            .clickable {
+                                val parts = clean.split("/")
+                                val user = parts[0]
+                                val pass = if (parts.size > 1) parts[1] else "admintelecom"
+                                webView?.evaluateJavascript(
+                                    """
+                                    (function() {
+                                        var inputs = document.getElementsByTagName('input');
+                                        for (var i = 0; i < inputs.length; i++) {
+                                            var type = inputs[i].type ? inputs[i].type.toLowerCase() : '';
+                                            var name = inputs[i].name ? inputs[i].name.toLowerCase() : '';
+                                            var id = inputs[i].id ? inputs[i].id.toLowerCase() : '';
+                                            if (type === 'password' || name.indexOf('pass') !== -1 || id.indexOf('pass') !== -1) {
+                                                inputs[i].value = '$pass';
+                                            } else if (type === 'text' && (name.indexOf('user') !== -1 || id.indexOf('user') !== -1 || name.indexOf('admin') !== -1)) {
+                                                inputs[i].value = '$user';
+                                            }
+                                        }
+                                    })();
+                                    """.trimIndent(), null
+                                )
+                                android.widget.Toast.makeText(context, "Filled: $cred", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                        shape = RoundedCornerShape(8.dp),
+                        color = CyberSurfaceVariant
+                    ) {
+                        Text(
+                            text = cred,
+                            fontSize = 10.sp,
+                            color = NeonCyan,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+
             // Embedded Real Router Web Admin Console
             AndroidView(
                 factory = { ctx ->

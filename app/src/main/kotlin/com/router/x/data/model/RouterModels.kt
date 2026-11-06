@@ -2,16 +2,46 @@ package com.router.x.data.model
 
 import kotlinx.serialization.Serializable
 
-enum class RouterProtocol(val displayName: String, val defaultPort: Int) {
-    AUTO_DETECT("Auto Detect", 80),
-    TPLINK_HTTP("TP-Link HTTP / Omada", 80),
-    MIKROTIK_REST("MikroTik RouterOS REST", 443),
-    OPENWRT_UBUS("OpenWrt ubus JSON-RPC", 80),
-    UNIFI_API("Ubiquiti UniFi OS", 443),
-    UPNP_IGD("Universal Plug & Play (UPnP)", 1900),
-    SNMP("SNMP v2c/v3", 161),
-    SSH_CLI("SSH Linux / DD-WRT Shell", 22)
+enum class RouterProtocol(val displayName: String, val defaultPort: Int, val defaultIp: String) {
+    AUTO_DETECT("Auto Detect Gateway", 80, "192.168.1.1"),
+    TPLINK_HTTP("TP-Link Archer / TL-WR", 80, "192.168.0.1"),
+    TENDA_HTTP("Tenda AC / F / TX Series", 80, "192.168.0.1"),
+    ASUS_WRT("ASUS RT / TUF / ROG AsusWRT", 80, "192.168.50.1"),
+    BDCOM_GPON("BDCOM GPON/EPON Optical Router", 80, "192.168.1.1"),
+    NETGEAR_GENIE("Netgear Nighthawk / Genie", 80, "192.168.1.1"),
+    DLINK_HNAP("D-Link DIR / EXO Series", 80, "192.168.0.1"),
+    HUAWEI_ZTE("Huawei / ZTE Optical Gateway", 80, "192.168.100.1"),
+    MIKROTIK_REST("MikroTik RouterOS", 8728, "192.168.88.1"),
+    OPENWRT_UBUS("OpenWrt / LuCI Smart Router", 80, "192.168.1.1"),
+    UNIFI_API("Ubiquiti UniFi OS", 443, "192.168.1.1"),
+    UPNP_IGD("Universal Plug & Play (UPnP)", 1900, "192.168.1.1"),
+    SNMP("SNMP v2c/v3 Management", 161, "192.168.1.1"),
+    SSH_CLI("SSH Linux / DD-WRT Shell", 22, "192.168.1.1")
 }
+
+@Serializable
+data class NetworkConfig(
+    val wanType: String = "DHCP (Dynamic IP)",
+    val gatewayIp: String = "192.168.1.1",
+    val subnetMask: String = "255.255.255.0",
+    val primaryDns: String = "8.8.8.8",
+    val secondaryDns: String = "1.1.1.1",
+    val dhcpEnabled: Boolean = true,
+    val dhcpStartIp: String = "192.168.1.100",
+    val dhcpEndIp: String = "192.168.1.200",
+    val leaseTimeMinutes: Int = 120
+)
+
+@Serializable
+data class SecurityConfig(
+    val adminUsername: String = "admin",
+    val firewallEnabled: Boolean = true,
+    val dosProtectionEnabled: Boolean = true,
+    val wpsEnabled: Boolean = true,
+    val remoteManagementEnabled: Boolean = false,
+    val remotePort: Int = 8080,
+    val blockWanPing: Boolean = true
+)
 
 @Serializable
 data class RouterCredentials(

@@ -61,12 +61,17 @@ import com.router.x.theme.NeonGreenGlow
 import com.router.x.theme.TextMuted
 import com.router.x.theme.TextPrimary
 import com.router.x.theme.TextSecondary
+import androidx.compose.runtime.rememberCoroutineScope
+import com.router.x.RouterXApp
+import com.router.x.data.network.NetworkScanner
+import com.router.x.data.network.RouterProber
 import com.router.x.ui.components.CyberBackground
 import com.router.x.ui.components.CyberBottomBar
 import com.router.x.ui.components.CyberOutlinedButton
 import com.router.x.ui.components.CyberPrimaryButton
 import com.router.x.ui.components.NeonCard
 import com.router.x.viewmodel.RouterViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun RoutersScreen(
@@ -322,12 +327,26 @@ fun AddRouterDialog(
     onDismiss: () -> Unit,
     onAdd: (name: String, model: String, ip: String, protocol: RouterProtocol, isLocal: Boolean) -> Unit
 ) {
-    var name by remember { mutableStateOf("New Router") }
-    var model by remember { mutableStateOf("Generic Router") }
-    var ip by remember { mutableStateOf("192.168.1.1") }
-    var selectedProtocol by remember { mutableStateOf(RouterProtocol.AUTO_DETECT) }
+    var name by remember { mutableStateOf("TP-Link Router") }
+    var model by remember { mutableStateOf("TP-Link Archer Series") }
+    var ip by remember { mutableStateOf("192.168.0.1") }
+    var selectedProtocol by remember { mutableStateOf(RouterProtocol.TPLINK_HTTP) }
     var isLocal by remember { mutableStateOf(true) }
     var expandedProtocolDropdown by remember { mutableStateOf(false) }
+    var isAutoDetecting by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    val popularBrands = listOf(
+        Triple("TP-Link", "Archer Series", RouterProtocol.TPLINK_HTTP),
+        Triple("Tenda", "AC / F Series", RouterProtocol.TENDA_HTTP),
+        Triple("ASUS", "RT / TUF AsusWRT", RouterProtocol.ASUS_WRT),
+        Triple("BDCOM", "GPON / EPON ONU", RouterProtocol.BDCOM_GPON),
+        Triple("Netgear", "Nighthawk Series", RouterProtocol.NETGEAR_GENIE),
+        Triple("D-Link", "DIR Series", RouterProtocol.DLINK_HNAP),
+        Triple("Huawei/ZTE", "Optical ONU", RouterProtocol.HUAWEI_ZTE),
+        Triple("MikroTik", "RouterOS", RouterProtocol.MIKROTIK_REST),
+        Triple("OpenWrt", "LuCI", RouterProtocol.OPENWRT_UBUS)
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -341,7 +360,139 @@ fun AddRouterDialog(
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Quick Auto-Detect Button
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            scope.launch {
+                                isAutoDetecting = true
+                                val wifi = NetworkScanner.getWifiInfo(RouterXApp.instance)
+                                val (probedModel, probedProto) = RouterProber.probeRouter(wifi.gatewayIp)
+                                ip = wifi.gatewayIp
+                                name = if (wifi.ssid != "Not Connected") "${wifi.ssid} Router" else "Gateway Router"
+                                model = probedModel
+                                selectedProtocol = probedProto
+                                isAutoDetecting = false
+                            }
+                        },
+                    shape = RoundedCornerShape(10.dp),
+                    color = CyberSurfaceVariant,
+                    border = BorderStroke(1.dp, NeonCyan.copy(alpha = 0.6f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(imageVector = Icons.Default.Router, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isAutoDetecting) "Scanning Network..." else "⚡ Auto-Detect Connected Router",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NeonCyan
+                        )
+                    }
+                }
+
+                // Brand Selector Chips
+                Text(text = "Quick Brand Presets:", fontSize = 11.sp, color = TextSecondary)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    popularBrands.take(3).forEach { (bName, bModel, bProto) ->
+                        val isSelected = selectedProtocol == bProto
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    selectedProtocol = bProto
+                                    name = "$bName Router"
+                                    model = "$bName $bModel"
+                                    ip = bProto.defaultIp
+                                },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSelected) NeonCyan.copy(alpha = 0.2f) else CyberSurfaceVariant,
+                            border = BorderStroke(1.dp, if (isSelected) NeonCyan else CyberCardBorder)
+                        ) {
+                            Text(
+                                text = bName,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) NeonCyan else TextPrimary,
+                                modifier = Modifier.padding(vertical = 6.dp, horizontal = 4.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    popularBrands.drop(3).take(3).forEach { (bName, bModel, bProto) ->
+                        val isSelected = selectedProtocol == bProto
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    selectedProtocol = bProto
+                                    name = "$bName Router"
+                                    model = "$bName $bModel"
+                                    ip = bProto.defaultIp
+                                },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSelected) NeonCyan.copy(alpha = 0.2f) else CyberSurfaceVariant,
+                            border = BorderStroke(1.dp, if (isSelected) NeonCyan else CyberCardBorder)
+                        ) {
+                            Text(
+                                text = bName,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) NeonCyan else TextPrimary,
+                                modifier = Modifier.padding(vertical = 6.dp, horizontal = 4.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    popularBrands.drop(6).take(3).forEach { (bName, bModel, bProto) ->
+                        val isSelected = selectedProtocol == bProto
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    selectedProtocol = bProto
+                                    name = "$bName Router"
+                                    model = "$bName $bModel"
+                                    ip = bProto.defaultIp
+                                },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSelected) NeonCyan.copy(alpha = 0.2f) else CyberSurfaceVariant,
+                            border = BorderStroke(1.dp, if (isSelected) NeonCyan else CyberCardBorder)
+                        ) {
+                            Text(
+                                text = bName,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) NeonCyan else TextPrimary,
+                                modifier = Modifier.padding(vertical = 6.dp, horizontal = 4.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -358,7 +509,7 @@ fun AddRouterDialog(
                 OutlinedTextField(
                     value = ip,
                     onValueChange = { ip = it },
-                    label = { Text("IP / Hostname", color = TextSecondary) },
+                    label = { Text("IP Address / Hostname", color = TextSecondary) },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextPrimary,
@@ -371,7 +522,7 @@ fun AddRouterDialog(
                 OutlinedTextField(
                     value = model,
                     onValueChange = { model = it },
-                    label = { Text("Router Model", color = TextSecondary) },
+                    label = { Text("Router Brand & Model", color = TextSecondary) },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextPrimary,
@@ -387,10 +538,10 @@ fun AddRouterDialog(
                         value = selectedProtocol.displayName,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Control Protocol", color = TextSecondary) },
+                        label = { Text("Management Protocol", color = TextSecondary) },
                         trailingIcon = {
                             TextButton(onClick = { expandedProtocolDropdown = true }) {
-                                Text("Choose", color = NeonCyan)
+                                Text("Select", color = NeonCyan)
                             }
                         },
                         colors = OutlinedTextFieldDefaults.colors(
@@ -406,11 +557,12 @@ fun AddRouterDialog(
                         onDismissRequest = { expandedProtocolDropdown = false },
                         modifier = Modifier.background(CyberSurfaceVariant)
                     ) {
-                        RouterProtocol.values().forEach { proto ->
+                        RouterProtocol.entries.forEach { proto ->
                             DropdownMenuItem(
                                 text = { Text(proto.displayName, color = TextPrimary) },
                                 onClick = {
                                     selectedProtocol = proto
+                                    ip = proto.defaultIp
                                     expandedProtocolDropdown = false
                                 }
                             )
