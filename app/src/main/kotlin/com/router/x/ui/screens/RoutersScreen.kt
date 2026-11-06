@@ -221,7 +221,11 @@ fun RoutersScreen(
                                 isSelected = isCurrent,
                                 onClick = {
                                     viewModel.selectRouter(router)
-                                    onNavigate(Screen.ControlCenter)
+                                    if (router.isAuthenticated) {
+                                        onNavigate(Screen.ControlCenter)
+                                    } else {
+                                        onNavigate(Screen.RouterLogin)
+                                    }
                                 }
                             )
                         }
@@ -301,14 +305,14 @@ fun RouterListItemCard(
             // Badge
             Surface(
                 shape = RoundedCornerShape(10.dp),
-                color = if (router.isLocal) NeonGreenGlow else Color(0x330077FF),
-                border = BorderStroke(1.dp, if (router.isLocal) NeonGreen else ElectricBlue)
+                color = if (router.isAuthenticated) NeonGreenGlow else Color(0x33FF9E00),
+                border = BorderStroke(1.dp, if (router.isAuthenticated) NeonGreen else Color(0xFFFF9E00))
             ) {
                 Text(
-                    text = if (router.isLocal) "Connected" else "Online",
+                    text = if (router.isAuthenticated) "✓ Master" else "🔒 Locked",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (router.isLocal) NeonGreen else ElectricBlue,
+                    color = if (router.isAuthenticated) NeonGreen else Color(0xFFFF9E00),
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                 )
             }

@@ -23,6 +23,7 @@ import com.router.x.ui.screens.ControlCenterScreen
 import com.router.x.ui.screens.HomeScreen
 import com.router.x.ui.screens.MonitoringScreen
 import com.router.x.ui.screens.NetworkMapScreen
+import com.router.x.ui.screens.RouterLoginScreen
 import com.router.x.ui.screens.RouterWebConsoleScreen
 import com.router.x.ui.screens.RoutersScreen
 import com.router.x.ui.screens.SplashScreen
@@ -72,7 +73,8 @@ class MainActivity : ComponentActivity() {
                     composable(Screen.Splash.route) {
                         SplashScreen(
                             onNavigateToHome = {
-                                navController.navigate(Screen.Home.route) {
+                                val dest = if (viewModel.selectedRouter.value.isAuthenticated) Screen.Home.route else Screen.RouterLogin.route
+                                navController.navigate(dest) {
                                     popUpTo(Screen.Splash.route) { inclusive = true }
                                 }
                             }
@@ -165,6 +167,19 @@ class MainActivity : ComponentActivity() {
                             viewModel = viewModel,
                             onNavigate = { screen ->
                                 navController.popBackStack()
+                            }
+                        )
+                    }
+
+                    composable(Screen.RouterLogin.route) {
+                        RouterLoginScreen(
+                            viewModel = viewModel,
+                            onNavigate = { screen ->
+                                if (screen == Screen.WebConsole) {
+                                    navController.navigate(Screen.WebConsole.route)
+                                } else {
+                                    navController.popBackStack()
+                                }
                             }
                         )
                     }

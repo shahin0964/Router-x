@@ -66,6 +66,7 @@ data class RouterItem(
     val cpuUsage: Int = 0,
     val ramUsage: Int = 0,
     val temperature: Int = 38,
+    val isAuthenticated: Boolean = false,
     val credentials: RouterCredentials = RouterCredentials()
 )
 

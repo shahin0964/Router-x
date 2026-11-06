@@ -77,6 +77,7 @@ fun AdvancedSettingsScreen(
     val selectedRouter by viewModel.selectedRouter.collectAsState()
     val wifiConfig by viewModel.wifiConfig.collectAsState()
     val currentTab by viewModel.settingsTab.collectAsState()
+    val isRouterAuth by viewModel.isRouterAuthenticated.collectAsState()
 
     // Wireless State
     var isWifiEnabled by remember(wifiConfig) { mutableStateOf(wifiConfig.isEnabled) }
@@ -834,25 +835,50 @@ fun AdvancedSettingsScreen(
 
                 // Security Notice Card
                 NeonCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    backgroundColor = CyberSurfaceVariant
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigate(Screen.RouterLogin) },
+                    backgroundColor = CyberSurfaceVariant,
+                    borderColor = if (isRouterAuth) NeonGreen else CyberCardBorder
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Security,
-                            contentDescription = null,
-                            tint = NeonCyan,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "Connected Gateway: ${selectedRouter.ipAddress} (${selectedRouter.modelName})",
-                            fontSize = 12.sp,
-                            color = TextSecondary
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = if (isRouterAuth) Icons.Default.Check else Icons.Default.Security,
+                                contentDescription = null,
+                                tint = if (isRouterAuth) NeonGreen else NeonCyan,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = if (isRouterAuth) "Connected & Authenticated" else "Connected Gateway (${selectedRouter.ipAddress})",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isRouterAuth) NeonGreen else TextPrimary
+                                )
+                                Text(
+                                    text = if (isRouterAuth) "Master admin session active" else "Tap here to login with admin password",
+                                    fontSize = 10.sp,
+                                    color = TextMuted
+                                )
+                            }
+                        }
+                        if (!isRouterAuth) {
+                            Text(
+                                text = "Login →",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NeonCyan
+                            )
+                        }
                     }
                 }
 

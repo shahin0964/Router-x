@@ -99,6 +99,7 @@ fun ControlCenterScreen(
 ) {
     val selectedRouter by viewModel.selectedRouter.collectAsState()
     val currentTab by viewModel.controlCenterTab.collectAsState()
+    val isRouterAuth by viewModel.isRouterAuthenticated.collectAsState()
     var showRebootDialog by remember { mutableStateOf(false) }
 
     // Quick control toggle states
@@ -262,8 +263,10 @@ fun ControlCenterScreen(
 
                     // Active Router Hero Card
                     NeonCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        borderColor = NeonCyan.copy(alpha = 0.5f)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigate(Screen.RouterLogin) },
+                        borderColor = if (isRouterAuth) NeonGreen.copy(alpha = 0.5f) else NeonCyan.copy(alpha = 0.5f)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -278,7 +281,7 @@ fun ControlCenterScreen(
                                     Icon(
                                         imageVector = Icons.Default.Router,
                                         contentDescription = null,
-                                        tint = NeonCyan,
+                                        tint = if (isRouterAuth) NeonGreen else NeonCyan,
                                         modifier = Modifier.size(32.dp)
                                     )
                                 }
@@ -287,12 +290,27 @@ fun ControlCenterScreen(
                             Spacer(modifier = Modifier.width(16.dp))
 
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = selectedRouter.name,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = selectedRouter.name,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = if (isRouterAuth) NeonGreenGlow else CyberSurfaceVariant
+                                    ) {
+                                        Text(
+                                            text = if (isRouterAuth) "UNLOCKED" else "LOCKED",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isRouterAuth) NeonGreen else Color(0xFFFF9E00),
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = "${selectedRouter.ipAddress} • ${selectedRouter.modelName}",
@@ -304,14 +322,14 @@ fun ControlCenterScreen(
                                     Surface(
                                         modifier = Modifier.size(7.dp),
                                         shape = CircleShape,
-                                        color = NeonGreen
+                                        color = if (isRouterAuth) NeonGreen else Color(0xFFFF9E00)
                                     ) {}
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "Online (${selectedRouter.protocol.displayName})",
+                                        text = if (isRouterAuth) "Online • Authenticated Master" else "Online • Tap to Authenticate Admin",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = NeonGreen
+                                        color = if (isRouterAuth) NeonGreen else Color(0xFFFF9E00)
                                     )
                                 }
                             }

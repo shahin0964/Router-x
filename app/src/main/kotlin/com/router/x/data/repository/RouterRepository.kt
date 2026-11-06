@@ -2,6 +2,7 @@ package com.router.x.data.repository
 
 import com.router.x.RouterXApp
 import com.router.x.data.model.DeviceItem
+import com.router.x.data.model.RouterCredentials
 import com.router.x.data.model.RouterItem
 import com.router.x.data.model.TelemetryData
 import com.router.x.data.model.WifiConfig
@@ -120,5 +121,21 @@ class RouterRepository {
 
     fun renameDevice(macAddress: String, newName: String) {
         storage.saveDeviceAlias(macAddress, newName)
+    }
+
+    fun updateRouterAuth(routerId: String, isAuthenticated: Boolean, credentials: RouterCredentials) {
+        val updated = _routers.value.map {
+            if (it.id == routerId) {
+                it.copy(isAuthenticated = isAuthenticated, credentials = credentials)
+            } else it
+        }
+        _routers.value = updated
+        if (_selectedRouter.value.id == routerId) {
+            _selectedRouter.value = _selectedRouter.value.copy(
+                isAuthenticated = isAuthenticated,
+                credentials = credentials
+            )
+        }
+        storage.saveRouters(updated)
     }
 }

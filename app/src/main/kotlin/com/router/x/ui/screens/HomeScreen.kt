@@ -25,8 +25,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Notifications
@@ -83,6 +85,7 @@ fun HomeScreen(
     val selectedRouter by viewModel.selectedRouter.collectAsState()
     val telemetry by viewModel.telemetry.collectAsState()
     val devices by viewModel.devices.collectAsState()
+    val isRouterAuth by viewModel.isRouterAuthenticated.collectAsState()
 
     var showRebootDialog by remember { mutableStateOf(false) }
 
@@ -204,6 +207,100 @@ fun HomeScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Router Authentication Status Banner
+                if (!isRouterAuth) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0x22FF9E00),
+                        border = BorderStroke(1.dp, Color(0xFFFF9E00)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigate(Screen.RouterLogin) }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = Color(0xFFFF9E00),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = "Router Admin Locked",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFFF9E00)
+                                    )
+                                    Text(
+                                        text = "Tap to enter password & unlock real controls",
+                                        fontSize = 10.sp,
+                                        color = TextMuted
+                                    )
+                                }
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFFF9E00).copy(alpha = 0.2f),
+                                border = BorderStroke(1.dp, Color(0xFFFF9E00))
+                            ) {
+                                Text(
+                                    text = "Login",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFFF9E00),
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = NeonGreenGlow,
+                        border = BorderStroke(1.dp, NeonGreen),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = NeonGreen,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Router Admin Authenticated",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NeonGreen
+                                )
+                            }
+                            Text(
+                                text = "Logout",
+                                fontSize = 11.sp,
+                                color = TextMuted,
+                                modifier = Modifier.clickable { viewModel.logoutRouter() }
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Network Health Card
@@ -293,8 +390,8 @@ fun HomeScreen(
                 // Active Router Card
                 NeonCard(
                     modifier = Modifier.fillMaxWidth(),
-                    borderColor = NeonCyan.copy(alpha = 0.4f),
-                    onClick = { onNavigate(Screen.ControlCenter) }
+                    borderColor = if (isRouterAuth) NeonGreen.copy(alpha = 0.5f) else NeonCyan.copy(alpha = 0.4f),
+                    onClick = { onNavigate(Screen.RouterLogin) }
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -309,7 +406,7 @@ fun HomeScreen(
                                 Icon(
                                     imageVector = Icons.Default.Router,
                                     contentDescription = null,
-                                    tint = NeonCyan,
+                                    tint = if (isRouterAuth) NeonGreen else NeonCyan,
                                     modifier = Modifier.size(32.dp)
                                 )
                             }
@@ -318,15 +415,30 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.width(14.dp))
 
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = selectedRouter.modelName,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = selectedRouter.name,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = if (isRouterAuth) NeonGreenGlow else CyberSurfaceVariant
+                                ) {
+                                    Text(
+                                        text = if (isRouterAuth) "UNLOCKED" else "LOCKED",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isRouterAuth) NeonGreen else Color(0xFFFF9E00),
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "${selectedRouter.ipAddress} • ${selectedRouter.firmwareVersion}",
+                                text = "${selectedRouter.ipAddress} • ${selectedRouter.modelName}",
                                 fontSize = 11.sp,
                                 color = TextMuted
                             )
@@ -370,12 +482,18 @@ fun HomeScreen(
                     QuickActionButton(
                         title = "WiFi",
                         icon = Icons.Default.Wifi,
-                        onClick = { onNavigate(Screen.AdvancedSettings) }
+                        onClick = {
+                            if (isRouterAuth) onNavigate(Screen.AdvancedSettings)
+                            else onNavigate(Screen.RouterLogin)
+                        }
                     )
                     QuickActionButton(
                         title = "Reboot",
                         icon = Icons.Default.PowerSettingsNew,
-                        onClick = { showRebootDialog = true },
+                        onClick = {
+                            if (isRouterAuth) showRebootDialog = true
+                            else onNavigate(Screen.RouterLogin)
+                        },
                         accent = NeonRed
                     )
                     QuickActionButton(

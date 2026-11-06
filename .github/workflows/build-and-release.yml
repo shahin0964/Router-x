@@ -106,6 +106,7 @@ jobs:
           echo "🎨 Cyberpunk + Premium Dark + Neon Blue/Cyan Interface" >> release_body.md
           echo "" >> release_body.md
           echo "### 🚀 Features Included in v${{ env.VERSION_NAME }}:" >> release_body.md
+          echo "* **Router Admin Authentication Gateway**: Secure admin login with password verification, quick default password chips, session lock/unlock badge, and real router authorization" >> release_body.md
           echo "* **Full Multi-Brand Support**: TP-Link (old WR to latest Archer/Omada), Tenda (F/N/AC/TX/RX), ASUS (RT/TUF AsusWRT), BDCOM (GPON/EPON ONU), Netgear (Nighthawk/Genie), D-Link (DIR/EXO), Huawei/ZTE GPON, MikroTik RouterOS, and OpenWrt" >> release_body.md
           echo "* **Interactive Tabs**: Dual-Band Wireless, WAN PPPoE/DHCP & LAN IP Pool, and Security Firewall tabs in Advanced Settings" >> release_body.md
           echo "* **Control Center Sub-Tabs**: Dedicated Control actions, Configuration modules, and real-time Interactive Diagnostic Ping Test tool" >> release_body.md

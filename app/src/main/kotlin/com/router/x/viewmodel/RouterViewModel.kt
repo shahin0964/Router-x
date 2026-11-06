@@ -7,6 +7,7 @@ import com.router.x.data.model.RouterItem
 import com.router.x.data.model.RouterProtocol
 import com.router.x.data.model.TelemetryData
 import com.router.x.data.model.WifiConfig
+import com.router.x.data.network.RouterProber
 import com.router.x.data.repository.RouterRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -23,6 +25,14 @@ class RouterViewModel(
 
     val routers: StateFlow<List<RouterItem>> = repository.routers
     val selectedRouter: StateFlow<RouterItem> = repository.selectedRouter
+
+    val isRouterAuthenticated: StateFlow<Boolean> = selectedRouter
+        .map { it.isAuthenticated }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
 
     val telemetry: StateFlow<TelemetryData> = selectedRouter
         .flatMapLatest { router -> repository.getTelemetryStream(router) }
@@ -89,6 +99,28 @@ class RouterViewModel(
             _devices.value = repository.fetchDevices(router)
             _wifiConfig.value = repository.fetchWifiConfig(router)
         }
+    }
+
+    fun authenticateRouter(password: String, username: String = "admin", onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val current = selectedRouter.value
+            val (success, message) = RouterProber.authenticateRouter(current.ipAddress, username, password)
+            if (success) {
+                val creds = current.credentials.copy(
+                    username = username,
+                    password = password
+                )
+                repository.updateRouterAuth(current.id, true, creds)
+                loadRouterData(current.copy(isAuthenticated = true, credentials = creds))
+            }
+            onResult(success, message)
+        }
+    }
+
+    fun logoutRouter() {
+        val current = selectedRouter.value
+        val creds = current.credentials.copy(password = "")
+        repository.updateRouterAuth(current.id, false, creds)
     }
 
     fun addRouter(name: String, model: String, ip: String, protocol: RouterProtocol, isLocal: Boolean) {
